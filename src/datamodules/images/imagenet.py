@@ -5,7 +5,7 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 
 import torchvision.transforms as transforms
-from src.datamodules.imagenet_dataset import CustomImagenet
+from src.datamodules.images.imagenet_dataset import CustomImagenet
 
 
 def imagenet_normalization():

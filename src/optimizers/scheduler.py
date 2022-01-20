@@ -1,3 +1,4 @@
+from fnmatch import fnmatch
 import math
 
 
@@ -27,5 +28,20 @@ def linear_warmup_decay(warmup_steps, total_steps, cosine=True, linear=False):
 
         # linear decay
         return 1.0 - progress
+
+    return fn
+
+
+def no_warmup_cosine_decay(decay_after, total_steps):
+    def fn(step):
+        if step < decay_after:
+            # no decay
+            return 1.0
+
+        progress = float(step - decay_after) / float(
+            max(1, total_steps - decay_after)
+        )
+
+        return 0.5 * (1.0 + math.cos(math.pi * progress))
 
     return fn
