@@ -80,11 +80,6 @@ def conv_1d(in_features, out_features, bias=True, init_scale=1.0, dtype=None):
     return conv_1d
 
 
-def layer_norm(normalized_shape):
-    """Layer norm."""
-    return nn.LayerNorm(normalized_shape=normalized_shape)
-
-
 #  -----------------------------------------------------------
 #  -----------------------  Modules  -------------------------
 #  -----------------------------------------------------------
@@ -485,6 +480,8 @@ class PerceiverEncoder(nn.Module):
                 )
             )
 
+        self.self_attends = nn.ModuleList(self.self_attends)
+
     def latents(self, x):
         # return latent array repeated along batch dim
         return self.z_pos_enc(x)
@@ -501,7 +498,6 @@ class PerceiverEncoder(nn.Module):
         return z
 
 
-# TODO: enable weight sharing flag
 class Perceiver(nn.Module):
     """The Perceiver: a scalable, fully attentional architecture."""
 

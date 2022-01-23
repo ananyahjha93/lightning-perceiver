@@ -3,7 +3,6 @@ import torchmetrics
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
-import numpy as np
 from typing import Any, Iterator, List, Dict, Tuple
 from src.models.io_processors import (
     ImagePreprocessor,
@@ -120,11 +119,10 @@ class ImageClassification(pl.LightningModule):
                 init_scale=self.trainable_enc_init_scale,
             )
         elif self.position_encoding_type == 'fourier':
-            num_enc_channels = self.fourier_enc_bands * np.prod(self.index_dims)
+            num_enc_channels = self.fourier_enc_bands * len(self.index_dims)
 
             if not self.fourier_enc_sine_only:
                 num_enc_channels *= 2
-
             if self.fourier_enc_concat_pos:
                 num_enc_channels += 2
 
@@ -207,7 +205,7 @@ class ImageClassification(pl.LightningModule):
     def configure_optimizers(self):
         # TODO: what about learnable params?
         if self.exclude_bn_bias:
-            params = self.exclude_from_wt_decay(
+            params = self.exclude_from_wt_decay_and_layer_adaptation(
                 self.named_parameters(), weight_decay=self.weight_decay
             )
         else:
@@ -230,16 +228,16 @@ class ImageClassification(pl.LightningModule):
         return [optimizer], [scheduler]
 
 
-    def shared_step(self, batch):
+    def shared_step(self, batch, is_training):
         x, y = batch
-        logits = self.model(x)
+        logits = self.model(x, is_training)
 
         loss = F.cross_entropy(logits, y)
 
         return loss, logits, y
 
     def training_step(self, batch, batch_idx) -> torch.Tensor:
-        loss, logits, y = self.shared_step(batch)
+        loss, logits, y = self.shared_step(batch, is_training=True)
         acc = self.train_acc(F.softmax(logits, dim=1), y)
 
         self.log('train_loss', loss, prog_bar=True, on_step=True, on_epoch=False)
@@ -249,7 +247,7 @@ class ImageClassification(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx) -> torch.Tensor:
-        loss, logits, y = self.shared_step(batch)
+        loss, logits, y = self.shared_step(batch, is_training=False)
         self.val_acc(F.softmax(logits, dim=1), y)
 
         self.log('val_loss', loss, prog_bar=True, sync_dist=True, on_step=False, on_epoch=True)
@@ -258,7 +256,7 @@ class ImageClassification(pl.LightningModule):
         return loss
 
     def test_step(self, batch, batch_idx) -> torch.Tensor:
-        loss, logits, y = self.shared_step(batch)
+        loss, logits, y = self.shared_step(batch, is_training=False)
         self.test_acc(F.softmax(logits, dim=1), y)
 
         self.log('test_loss', loss, sync_dist=True, on_step=False, on_epoch=True)
@@ -269,10 +267,10 @@ class ImageClassification(pl.LightningModule):
 if __name__ == '__main__':
     pl.seed_everything(1234)
 
-    data_dir = ""
+    data_dir = "/home/ananya/imagenet/data/imagenet_2012"
     ckpt_path = ""
-    batch_size = 128
-    num_workers = 8
+    batch_size = 16
+    num_workers = 4
     img_size = 224
     training_epochs = 110
     num_accelerators = 8
@@ -320,6 +318,6 @@ if __name__ == '__main__':
         devices=num_accelerators,
         callbacks=callbacks,
         precision=32,
-        ckpt_path=None if ckpt_path == "" else ckpt_path,
+        #ckpt_path=None if ckpt_path == "" else ckpt_path,
     )
     trainer.fit(model, dm)

@@ -33,7 +33,10 @@ class TrainablePositionEncoding(nn.Module):
 
     def forward(self, x):
         batch_size = x.shape[0]
-        return self.encodings.unsqueeze(0).repeat(batch_size, 1, 1)
+        encodings = self.encodings.unsqueeze(0).repeat(batch_size, 1, 1)
+        encodings = encodings.to(x.get_device())
+
+        return encodings
 
 
 class FourierPositionEncoding(nn.Module):
@@ -124,7 +127,10 @@ class FourierPositionEncoding(nn.Module):
 
     def forward(self, x):
         batch_size = x.shape[0]
-        return self.encodings.unsqueeze(0).repeat(batch_size, 1, 1)
+        encodings = self.encodings.unsqueeze(0).repeat(batch_size, 1, 1)
+        encodings = encodings.to(x.get_device())
+
+        return encodings
 
 
 # TODO:
