@@ -113,6 +113,9 @@ def test_perceiver_fourier_enc_with_pixels():
         concat_or_add_pos='concat'
     )
 
+    print(perceiver)
+    exit(-1)
+
     output = perceiver(x, is_training=True)
     # [batch, num_classes]
     assert output.shape == (7, 1000)
@@ -145,4 +148,4 @@ def test_perceiver_learned_enc_with_conv1x1():
 
 if __name__ == '__main__':
     test_perceiver_fourier_enc_with_pixels()
-    test_perceiver_learned_enc_with_conv1x1()
+    # test_perceiver_learned_enc_with_conv1x1()
