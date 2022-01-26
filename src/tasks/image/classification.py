@@ -18,8 +18,8 @@ from src.models.perceiver import Perceiver, PerceiverEncoder
 from src.models.positional_encoding import FourierPositionEncoding, TrainablePositionEncoding
 from src.optimizers.lamb import LAMB
 from src.optimizers.scheduler import linear_warmup_decay, no_warmup_cosine_decay
-from src.datamodules.images.imagenet import ImagenetDataModule, imagenet_normalization
-from src.transforms.images.imagenet_classification import EvalTransform, TrainTransform
+from src.datamodules.image.imagenet import ImagenetDataModule, imagenet_normalization
+from src.transforms.image.imagenet_classification import EvalTransform, TrainTransform
 
 
 class ImageClassification(pl.LightningModule):
@@ -309,7 +309,8 @@ class ImageClassification(pl.LightningModule):
         return loss, logits, y
 
     def training_step(self, batch, batch_idx) -> torch.Tensor:
-        loss, logits, y = self.shared_step(batch, is_training=True)
+        loss, logits, _ = self.shared_step(batch, is_training=True)
+        _, y = batch
         acc = self.train_acc(F.softmax(logits, dim=1), y)
 
         self.log('train_loss', loss, prog_bar=True, on_step=True, on_epoch=False)
