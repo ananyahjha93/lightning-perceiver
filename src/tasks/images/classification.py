@@ -1,5 +1,4 @@
 # mixup adapted from https://github.com/facebookresearch/deit/blob/main/main.py
-from parso import parse
 import torch
 import torchmetrics
 import argparse
@@ -68,10 +67,10 @@ class ImageClassification(pl.LightningModule):
         mixup_prob=1.0,
         mixup_switch_prob=0.5,
         mixup_mode='batch',
-        *args: Any,
-        **kwargs: Any,
+        *args,
+        **kwargs,
     ) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__()
 
         # training params
         self.optimizer = optimizer
@@ -130,6 +129,7 @@ class ImageClassification(pl.LightningModule):
         self.mixup_mode = mixup_mode
         self.smoothing = smoothing
 
+        self.mixup_fn = None
         mixup_active = mixup > 0 or cutmix > 0. or cutmix_minmax is not None
         if mixup_active:
             self.mixup_fn = Mixup(
@@ -143,14 +143,15 @@ class ImageClassification(pl.LightningModule):
                 num_classes=self.num_classes,
             )
 
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.train_criterion = torch.nn.CrossEntropyLoss()
+        self.eval_criterion = torch.nn.CrossEntropyLoss()
 
         # add criterion
         if mixup_active:
             # smoothing is handled with mixup label transform
-            self.criterion = SoftTargetCrossEntropy()
+            self.train_criterion = SoftTargetCrossEntropy()
         elif self.smoothing > 0.:
-            self.criterion = LabelSmoothingCrossEntropy(smoothing=self.smoothing)
+            self.train_criterion = LabelSmoothingCrossEntropy(smoothing=self.smoothing)
 
         # accuracy metrics
         self.train_acc = torchmetrics.Accuracy()
@@ -294,8 +295,16 @@ class ImageClassification(pl.LightningModule):
 
     def shared_step(self, batch, is_training):
         x, y = batch
+
+        if is_training and self.mixup_fn is not None:
+            x, y = self.mixup_fn(x, y)
+
         logits = self.model(x, is_training)
-        loss = self.criterion(logits, y)
+
+        if is_training:
+            loss = self.train_criterion(logits, y)
+        else:
+            loss = self.eval_criterion(logits, y)
 
         return loss, logits, y
 
@@ -357,7 +366,7 @@ if __name__ == '__main__':
     parser.set_defaults(exclude_bn_bias=True)
 
     parser.add_argument('--smoothing', type=float, default=0.1)
-    parser.add_argument('--weight_decay', type=str, default=0.1)
+    parser.add_argument('--weight_decay', type=float, default=0.1)
     parser.add_argument('--training_epochs', type=int, default=110)
     parser.add_argument('--decay_start_from', type=int, default=55)
     parser.add_argument('--warmup_epochs', type=int, default=5)
@@ -460,7 +469,6 @@ if __name__ == '__main__':
         devices=args.num_accelerators,
         callbacks=callbacks,
         precision=16 if args.fp16 else 32,
-        ckpt_path=None if args.ckpt_path == "" else args.ckpt_path,
         gradient_clip_val=args.gradient_clip_val,
     )
-    trainer.fit(model, dm)
+    trainer.fit(model, dm, ckpt_path=None if args.ckpt_path == "" else args.ckpt_path)
