@@ -19,7 +19,13 @@ from src.models.positional_encoding import FourierPositionEncoding, TrainablePos
 from src.optimizers.lamb import LAMB
 from src.optimizers.scheduler import linear_warmup_decay, no_warmup_cosine_decay
 from src.datamodules.image.imagenet import ImagenetDataModule, imagenet_normalization
-from src.transforms.image.imagenet_classification import EvalTransform, TrainTransform
+from src.datamodules.image.cifar10 import CIFAR10DataModule, cifar10_normalization
+from src.transforms.image.imagenet_classification import (
+    ImagenetEvalTransform, ImagenetTrainTransform
+)
+from src.transforms.image.generic_classification import (
+    GenericEvalTransform, GenericTrainTransform
+)
 
 
 class ImageClassification(pl.LightningModule):
@@ -338,15 +344,16 @@ class ImageClassification(pl.LightningModule):
         return loss
 
 if __name__ == '__main__':
-    # TODO: add fast imagenet dataloading
     # TODO: do we need RASampler?
     # TODO: add args for transforms
+    # TODO: class token?
     parser = argparse.ArgumentParser('DeiT training and evaluation script', add_help=False)
 
     parser.add_argument("--seed", type=int, default=1234)
     parser.add_argument('--local_rank', type=int, default=0)  # added to launch 2 ddp script on same node
     parser.add_argument('--ckpt_path', type=str, default='')
     parser.add_argument('--data_dir', type=str,  default='')
+    parser.add_argument('--datamodule', type=str, default='imagenet')
 
     #  training params
     parser.add_argument('--accelerator', type=str, default='gpu')
@@ -430,22 +437,44 @@ if __name__ == '__main__':
     pl.seed_everything(args.seed)
 
     # initialize datamodule
-    dm = ImagenetDataModule(
-        data_dir=args.data_dir,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        image_size=args.img_size,
-    )
+    if args.datamodule == 'imagenet':
+        dm = ImagenetDataModule(
+            data_dir=args.data_dir,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            image_size=args.img_size,
+        )
 
-    args.num_samples = dm.num_samples
-    normalization = imagenet_normalization()
+        args.num_samples = dm.num_samples
+        normalization = imagenet_normalization()
 
-    # initialize transforms
-    # defaults set to DeiT
-    # TODO: add args
-    dm.train_transforms = TrainTransform()
-    dm.val_transforms = EvalTransform()
-    dm.test_transforms = EvalTransform()
+        # initialize transforms
+        # defaults set to DeiT
+        # TODO: add args
+        dm.train_transforms = ImagenetTrainTransform()
+        dm.val_transforms = ImagenetEvalTransform()
+        dm.test_transforms = ImagenetEvalTransform()
+    elif args.datamodule == 'cifar10':
+        dm = CIFAR10DataModule(
+            data_dir=args.data_dir,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+        )
+
+        args.num_samples = dm.num_samples
+
+        dm.train_transforms = GenericTrainTransform(
+            img_size=args.img_size,
+            color_jitter=0.5,
+            gaussian_blur=False,
+            normalize=cifar10_normalization(),
+        )
+        dm.val_transforms = GenericEvalTransform(
+            img_size=args.img_size, normalize=cifar10_normalization()
+        )
+        dm.test_transforms = GenericEvalTransform(
+            img_size=args.img_size, normalize=cifar10_normalization()
+        )
 
     # model init, checkpointing
     if args.ckpt_path == "":

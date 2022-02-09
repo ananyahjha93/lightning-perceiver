@@ -1,10 +1,10 @@
 # adapted from: https://github.com/facebookresearch/deit/blob/main/datasets.py
 import torchvision.transforms as T
 from timm.data import create_transform
-from src.datamodules.images.imagenet import imagenet_normalization
+from src.datamodules.image.imagenet import imagenet_normalization
 
 
-class TrainTransform:
+class ImagenetTrainTransform:
     """Image classification train transform.
 
     Args:
@@ -44,7 +44,7 @@ class TrainTransform:
         return self.transform(x)
 
 
-class EvalTransform:
+class ImagenetEvalTransform:
     def __init__(
         self,
         img_size=224,
