@@ -502,3 +502,4 @@ if __name__ == '__main__':
         gradient_clip_val=args.gradient_clip_val,
     )
     trainer.fit(model, dm, ckpt_path=None if args.ckpt_path == "" else args.ckpt_path)
+    trainer.test(datamodule=dm)
