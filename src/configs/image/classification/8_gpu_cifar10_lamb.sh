@@ -12,7 +12,7 @@ python src/tasks/image/classification.py \
     --scheduler no_warmup \
     --learning_rate 0.001 \
     --weight_decay 0.1 \
-    --training_epochs 300 \
+    --training_epochs 1600 \
     --decay_start_from 50 \
     --num_classes 10 \
     --num_blocks 8 \
