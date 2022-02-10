@@ -43,6 +43,8 @@ class ImageClassification(pl.LightningModule):
         training_epochs=110,
         decay_start_from=55,
         warmup_epochs=5,
+        milestones=[84, 102, 114],
+        decay_coeff=0.1,
         num_classes=1000,
         img_size=224,
         num_blocks=8,
@@ -88,6 +90,8 @@ class ImageClassification(pl.LightningModule):
         self.decay_start_from = decay_start_from
         self.warmup_epochs = warmup_epochs
         self.num_classes = num_classes
+        self.milestones = milestones
+        self.decay_coeff = decay_coeff
 
         global_batch_size = (
             num_accelerators * batch_size if num_accelerators > 0 else batch_size
@@ -287,14 +291,19 @@ class ImageClassification(pl.LightningModule):
         elif self.scheduler == 'warmup':
             warmup_steps = self.train_iters_per_epoch * self.warmup_epochs
             scheduler_fn = linear_warmup_decay(warmup_steps, total_steps, cosine=True)
+        elif self.scheduler == 'multi_step':
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(
+                optimizer, milestones=self.milestones, gamma=self.decay_coeff,
+            )
 
-        scheduler = {
-            "scheduler": torch.optim.lr_scheduler.LambdaLR(
-                optimizer, scheduler_fn
-            ),
-            "interval": "step",
-            "frequency": 1,
-        }
+        if self.scheduler != 'multi_step':
+            scheduler = {
+                "scheduler": torch.optim.lr_scheduler.LambdaLR(
+                    optimizer, scheduler_fn
+                ),
+                "interval": "step",
+                "frequency": 1,
+            }
 
         return [optimizer], [scheduler]
 
@@ -366,7 +375,9 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--optimizer', type=str, default='lamb', help='lamb/adamw')
-    parser.add_argument('--scheduler', type=str, default='no_warmup', help='no_warmup/warmup')
+    parser.add_argument('--scheduler', type=str, default='no_warmup', help='no_warmup/warmup/multi_step')
+    parser.add_argument('--milestones', nargs="+", default=[84, 102, 114])
+    parser.add_argument('--decay_coeff', type=float, default=0.1)
     parser.add_argument('--learning_rate', type=float, default=0.002)
     parser.add_argument('--gradient_clip_val', type=float, default=10.)
 

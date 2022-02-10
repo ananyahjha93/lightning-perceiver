@@ -9,11 +9,12 @@ python src/tasks/image/classification.py \
     --batch_size 128 \
     --num_workers 8 \
     --optimizer lamb \
-    --scheduler no_warmup \
+    --scheduler multi_step \
     --learning_rate 0.001 \
     --weight_decay 0.1 \
-    --training_epochs 1600 \
-    --decay_start_from 50 \
+    --training_epochs 800 \
+    --milestones 50 600 700 \
+    --decay_coeff 0.1 \
     --num_classes 10 \
     --num_blocks 8 \
     --z_index_dim 128 \
