@@ -1,6 +1,6 @@
 #!/bin/sh
 
-python src/tasks/images/classification.py \
+python src/tasks/image/classification.py \
     --datamodule imagenet \
     --accelerator gpu \
     --num_accelerators 8 \
